@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import ReadingGraph from './ReadingGraph';
 
 const BookDetail = ({ bookId, onBack, onDelete }) => {
   const [book, setBook] = useState(null);
   const [progress, setProgress] = useState('');
   const [notes, setNotes] = useState('');
   const [rating, setRating] = useState('');
+  const [history, setHistory] = useState([]);
 
   const [editProgress, setEditProgress] = useState(false);
   const [editReview, setEditReview] = useState(false);
 
   useEffect(() => {
+    // 📘 Fetch book details
     axios.get(`http://localhost:8000/api/books/${bookId}/`)
       .then(res => {
         setBook(res.data);
@@ -20,6 +21,13 @@ const BookDetail = ({ bookId, onBack, onDelete }) => {
         setRating(res.data.review?.rating || '');
       })
       .catch(err => console.error(err));
+
+    // 📈 Fetch progress history
+    axios.get(`http://localhost:8000/api/books/${bookId}/progress-history/`)
+      .then(res => {
+        setHistory(res.data);
+      })
+      .catch(err => console.error("❌ Failed to load progress history", err));
   }, [bookId]);
 
   const updateProgress = () => {
@@ -91,8 +99,24 @@ const BookDetail = ({ bookId, onBack, onDelete }) => {
         )}
       </div>
 
+      {/* Progress History Section */}
+      <div style={{ marginTop: '20px' }}>
+        <h4>📅 Progress History</h4>
+        {history.length > 0 ? (
+          <ul>
+            {history.map((entry, index) => (
+              <li key={index}>
+                {new Date(entry.updated_at).toLocaleDateString()} - {entry.percent_completed}%
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>No history available.</p>
+        )}
+      </div>
+
       {/* Review Section */}
-      <div>
+      <div style={{ marginTop: '20px' }}>
         <h4>📝 Review</h4>
         {book.status !== 'completed' ? (
           <p style={{ fontStyle: 'italic', color: 'gray' }}>
@@ -122,11 +146,6 @@ const BookDetail = ({ bookId, onBack, onDelete }) => {
             <button onClick={() => setEditReview(true)}>✏️ Edit</button>
           </>
         )}
-      </div>
-
-      {/* Graph Section */}
-      <div style={{ marginTop: '20px' }}>
-        <ReadingGraph bookId={bookId} />
       </div>
 
       {/* Delete + Back */}

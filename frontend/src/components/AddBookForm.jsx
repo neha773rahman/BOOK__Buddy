@@ -1,4 +1,3 @@
-// src/components/AddBookForm.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 
@@ -71,4 +70,4 @@ const AddBookForm = ({ onBookAdded }) => {
   );
 };
 
-export default AddBookForm;
+export default AddBookForm;     

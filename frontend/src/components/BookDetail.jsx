@@ -1,159 +1,99 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-const BookDetail = ({ bookId, onBack, onDelete }) => {
+function BookDetail({ bookId, onBack, onDelete }) {
   const [book, setBook] = useState(null);
-  const [progress, setProgress] = useState('');
-  const [notes, setNotes] = useState('');
+  const [status, setStatus] = useState('');
   const [rating, setRating] = useState('');
-  const [history, setHistory] = useState([]);
-
-  const [editProgress, setEditProgress] = useState(false);
-  const [editReview, setEditReview] = useState(false);
+  const [review, setReview] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 📘 Fetch book details
     axios.get(`http://localhost:8000/api/books/${bookId}/`)
       .then(res => {
         setBook(res.data);
-        setProgress(res.data.progress?.percent_completed || '');
-        setNotes(res.data.review?.notes || '');
-        setRating(res.data.review?.rating || '');
+        setStatus(res.data.status);
+        setLoading(false);
       })
-      .catch(err => console.error(err));
-
-    // 📈 Fetch progress history
-    axios.get(`http://localhost:8000/api/books/${bookId}/progress-history/`)
-      .then(res => {
-        setHistory(res.data);
-      })
-      .catch(err => console.error("❌ Failed to load progress history", err));
+      .catch(err => {
+        console.error('Error fetching book:', err);
+      });
   }, [bookId]);
 
-  const updateProgress = () => {
-    axios.patch(`http://localhost:8000/api/progress/${bookId}/`, {
+  const handleStatusUpdate = () => {
+    axios.patch(`http://localhost:8000/api/books/${bookId}/`, { status })
+      .then(() => alert('Status updated!'))
+      .catch(err => console.error('Status update failed:', err));
+  };
+
+  const handleAddReview = () => {
+    axios.post('http://localhost:8000/api/reviews/', {
       book: bookId,
-      percent_completed: parseInt(progress),
+      rating,
+      comment: review
     })
-      .then(() => {
-        alert("Progress updated");
-        setEditProgress(false);
-      })
-      .catch(() => alert("Failed to update progress"));
-  };
-
-  const updateReview = () => {
-    axios.patch(`http://localhost:8000/api/review/${bookId}/`, {
-      book: bookId,
-      notes,
-      rating: parseInt(rating),
+    .then(() => {
+      alert('Review added!');
+      setRating('');
+      setReview('');
     })
+    .catch(err => console.error('Error adding review:', err));
+  };
+
+  const handleDelete = () => {
+    axios.delete(`http://localhost:8000/api/books/${bookId}/`)
       .then(() => {
-        alert("Review updated");
-        setEditReview(false);
+        alert('Book deleted!');
+        onDelete();
       })
-      .catch(() => alert("Failed to update review"));
+      .catch(err => console.error('Error deleting book:', err));
   };
 
-  const deleteBook = () => {
-    if (window.confirm("Are you sure you want to delete this book?")) {
-      axios.delete(`http://localhost:8000/api/books/${bookId}/`)
-        .then(() => {
-          alert("Book deleted");
-          onBack();
-          onDelete();
-        })
-        .catch(() => alert("Failed to delete book"));
-    }
-  };
-
-  if (!book) return <p>Loading...</p>;
+  if (loading || !book) return <p>Loading book details...</p>;
 
   return (
-    <div style={{ border: '1px solid #ccc', padding: '15px', marginTop: '20px' }}>
-      <h3>📖 {book.title} - Details</h3>
+    <div className="container mt-4">
+      <button className="btn btn-secondary mb-3" onClick={onBack}>⬅ Back</button>
+
+      <h2>{book.title}</h2>
       <p><strong>Author:</strong> {book.author}</p>
       <p><strong>Genre:</strong> {book.genre}</p>
-      <p><strong>Status:</strong> {book.status}</p>
 
-      {/* Progress Section */}
-      <div>
-        <h4>📈 Progress</h4>
-        {editProgress ? (
-          <>
-            <input
-              type="number"
-              value={progress}
-              onChange={(e) => setProgress(e.target.value)}
-              min="0"
-              max="100"
-            />
-            <button onClick={updateProgress}>Save</button>
-            <button onClick={() => setEditProgress(false)}>Cancel</button>
-          </>
-        ) : (
-          <>
-            <p>{progress ? `${progress}% completed` : 'No progress yet'}</p>
-            <button onClick={() => setEditProgress(true)}>✏️ Edit</button>
-          </>
-        )}
-      </div>
+      <hr />
 
-      {/* Progress History Section */}
-      <div style={{ marginTop: '20px' }}>
-        <h4>📅 Progress History</h4>
-        {history.length > 0 ? (
-          <ul>
-            {history.map((entry, index) => (
-              <li key={index}>
-                {new Date(entry.updated_at).toLocaleDateString()} - {entry.percent_completed}%
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No history available.</p>
-        )}
-      </div>
+      <h5>Update Status</h5>
+      <select value={status} onChange={(e) => setStatus(e.target.value)} className="form-select mb-2">
+        <option value="wishlist">Wishlist</option>
+        <option value="reading">Reading</option>
+        <option value="completed">Completed</option>
+      </select>
+      <button className="btn btn-primary mb-3" onClick={handleStatusUpdate}>Update Status</button>
 
-      {/* Review Section */}
-      <div style={{ marginTop: '20px' }}>
-        <h4>📝 Review</h4>
-        {book.status !== 'completed' ? (
-          <p style={{ fontStyle: 'italic', color: 'gray' }}>
-            📌 You can only review a completed book.
-          </p>
-        ) : editReview ? (
-          <>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Write review"
-            />
-            <br />
-            <label>Rating:</label>
-            <select value={rating} onChange={(e) => setRating(e.target.value)}>
-              <option value="">--</option>
-              {[1, 2, 3, 4, 5].map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <br />
-            <button onClick={updateReview}>Save</button>
-            <button onClick={() => setEditReview(false)}>Cancel</button>
-          </>
-        ) : (
-          <>
-            <p><strong>Review:</strong> {notes || 'No review yet'}</p>
-            <p><strong>Rating:</strong> {rating || 'No rating yet'}</p>
-            <button onClick={() => setEditReview(true)}>✏️ Edit</button>
-          </>
-        )}
-      </div>
+      <hr />
 
-      {/* Delete + Back */}
-      <button onClick={deleteBook} style={{ color: 'red', marginTop: '20px' }}>Delete Book</button>
-      <br />
-      <button onClick={onBack} style={{ marginTop: '10px' }}>← Back</button>
+      <h5>Add Review</h5>
+      <input
+        type="number"
+        min="1"
+        max="5"
+        placeholder="Rating (1-5)"
+        value={rating}
+        onChange={(e) => setRating(e.target.value)}
+        className="form-control mb-2"
+      />
+      <textarea
+        placeholder="Write a review..."
+        value={review}
+        onChange={(e) => setReview(e.target.value)}
+        className="form-control mb-2"
+      />
+      <button className="btn btn-success" onClick={handleAddReview}>Submit Review</button>
+
+      <hr />
+
+      <button className="btn btn-danger" onClick={handleDelete}>Delete Book</button>
     </div>
   );
-};
+}
 
 export default BookDetail;

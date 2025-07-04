@@ -1,20 +1,32 @@
+// App.jsx
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import BookManager from './components/BookManager';
+import BookDetail from './components/BookDetail';
 
-
-import React, { useState } from 'react';
-import BookList from './components/BookList';
-import AddBookForm from './components/AddBookForm';
-
-function App() {
-  const [newBook, setNewBook] = useState(null);
+// Wrapper for extracting bookId and passing props to BookDetail
+function BookDetailWrapper() {
+  const { bookId } = useParams();
+  const navigate = useNavigate();
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>📖 Book Buddy</h1>
-      <AddBookForm onBookAdded={setNewBook} />
-      <hr />
-      <BookList key={newBook?.id || 0} />
-    </div>
+    <BookDetail
+      bookId={bookId}
+      onBack={() => navigate('/', { state: { showList: true } })}
+      onDelete={() => navigate('/', { state: { showList: true } })}
+    />
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<BookManager />} />
+        <Route path="/book/:bookId" element={<BookDetailWrapper />} />
+      </Routes>
+    </Router>
   );
 }
 
 export default App;
+
